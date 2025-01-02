@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: avnadmin  # PostgreSQL kullanıcı adı
+      POSTGRES_PASSWORD: securepassword  # PostgreSQL kullanıcı şifresi
+      #POSTGRES_DB: backstage_plugin_app  # Varsayılan oluşturulacak veritabanı
+    ports:
+      - "5432:5432"  # Host ve konteyner portları eşleştirilir
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Kalıcı veri saklama için volume
+    restart: unless-stopped  # Konteyner yeniden başlatma politikası
+
+volumes:
+  postgres_data:
