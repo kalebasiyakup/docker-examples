@@ -1,0 +1,6 @@
+apiVersion: v2
+name: redis-cluster
+description: A Helm chart for Redis with Sentinel
+type: application
+version: 0.1.0
+appVersion: "8.2.1"

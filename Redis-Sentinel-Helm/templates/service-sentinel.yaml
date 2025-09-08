@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel
+  namespace: {{ .Values.namespace }}
+spec:
+  ports:
+    - name: sentinel
+      port: 26379
+  selector:
+    app: redis-sentinel
