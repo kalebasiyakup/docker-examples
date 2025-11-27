@@ -6,9 +6,9 @@ services:
     ports:
       - 5432:5432
     environment:
-      POSTGRES_PASSWORD: Pa123456
+      POSTGRES_PASSWORD: Psql123456
       POSTGRES_USER: postgres
-      POSTGRES_DB: NeoBff
+      POSTGRES_DB: BffDb
     networks:
       - bff-network
 
