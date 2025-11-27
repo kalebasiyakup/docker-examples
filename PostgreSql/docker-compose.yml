@@ -1,18 +1,42 @@
 version: '3.9'
 
 services:
-  postgres:
+  postgres_source:
     image: postgres:15
-    container_name: postgres
+    container_name: postgres_source
     environment:
-      POSTGRES_USER: avnadmin  # PostgreSQL kullanıcı adı
-      POSTGRES_PASSWORD: securepassword  # PostgreSQL kullanıcı şifresi
-      #POSTGRES_DB: backstage_plugin_app  # Varsayılan oluşturulacak veritabanı
+      POSTGRES_USER: avnadmin
+      POSTGRES_PASSWORD: securepassword
+      #POSTGRES_DB: backstage_plugin_app
     ports:
-      - "5432:5432"  # Host ve konteyner portları eşleştirilir
+      - "5023:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Kalıcı veri saklama için volume
-    restart: unless-stopped  # Konteyner yeniden başlatma politikası
+      - postgres_source_data:/var/lib/postgresql/data
+    command:
+      postgres -c wal_level=logical
+               -c max_wal_senders=20
+               -c max_replication_slots=20
+               -c wal_keep_size=512MB    
+    restart: unless-stopped
+
+  postgres_target:
+    image: postgres:15
+    container_name: postgres_target
+    environment:
+      POSTGRES_USER: avnadmin
+      POSTGRES_PASSWORD: securepassword
+      #POSTGRES_DB: backstage_plugin_app_target
+    ports:
+      - "5024:5432"
+    volumes:
+      - postgres_target_data:/var/lib/postgresql/data
+    command:
+      postgres -c wal_level=logical
+               -c max_wal_senders=20
+               -c max_replication_slots=20
+               -c wal_keep_size=512MB    
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  postgres_source_data:
+  postgres_target_data:

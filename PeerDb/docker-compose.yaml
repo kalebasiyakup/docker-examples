@@ -1,0 +1,104 @@
+version: "3.9"
+
+services:
+  # PeerDB'nin metadata'sı için katalog Postgres
+  catalog:
+    image: postgres:16
+    container_name: peerdb_catalog
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5440:5432"
+    volumes:
+      - catalog_data:/var/lib/postgresql/data
+
+  # Temporal (PeerDB iş akışları için)
+  temporal:
+    image: temporalio/auto-setup:1.25.1
+    container_name: peerdb_temporal
+    restart: unless-stopped
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PWD=postgres
+      - POSTGRES_SEEDS=catalog
+    depends_on:
+      - catalog
+    ports:
+      - "7233:7233"
+
+  # PeerDB Server (SQL endpoint 9900)
+  peerdb:
+    image: ghcr.io/peerdb-io/peerdb-server:stable-v0.34.2
+    container_name: peerdb_server
+    restart: unless-stopped
+    environment:
+      # Catalog (metadata) Postgres connection
+      CATALOG_POSTGRES_HOST: catalog
+      CATALOG_POSTGRES_PORT: "5432"
+      CATALOG_POSTGRES_USER: postgres
+      CATALOG_POSTGRES_PASSWORD: postgres
+      # Optional: DB name for metadata; default is usually 'postgres'
+      CATALOG_POSTGRES_DB: postgres
+      # Temporal address for workflows
+      TEMPORAL_ADDRESS: temporal:7233
+    depends_on:
+      - catalog
+      - temporal
+    ports:
+      - "9900:9900"
+
+  # PeerDB UI (Dashboard 3000)
+  ui:
+    image: ghcr.io/peerdb-io/peerdb-ui:stable-v0.34.2
+    container_name: peerdb_ui
+    restart: unless-stopped
+    depends_on:
+      - peerdb
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_PEERDB_SERVER_URL=http://peerdb:9900
+
+  # CDC kaynağı Postgres (logical replication açık)
+  pg_source:
+    image: postgres:16
+    container_name: pg_source
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: source
+    command: >
+      postgres -c wal_level=logical
+               -c max_wal_senders=20
+               -c max_replication_slots=20
+               -c wal_keep_size=512MB
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_source_data:/var/lib/postgresql/data
+      - ./init-source.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+
+  # CDC hedef Postgres
+  pg_target:
+    image: postgres:16
+    container_name: pg_target
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: target
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg_target_data:/var/lib/postgresql/data
+      - ./init-target.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+
+volumes:
+  catalog_data:
+  pg_source_data:
+  pg_target_data:

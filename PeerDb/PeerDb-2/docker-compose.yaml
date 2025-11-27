@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  # 1️⃣ PeerDB Backend
+  peerdb:
+    image: ghcr.io/peerdb-io/peerdb-server:dev-c020dd4
+    container_name: peerdb
+    restart: unless-stopped
+    ports:
+      - "9900:9900"
+    environment:
+      - PEERDB_MODE=server
+      - PEERDB_UI_BASE_URL=http://peerdb-ui:3000
+      # DB bağlantısı
+      - POSTGRES_CONN_STR=postgresql://peerdb_user:peerdb_pass@postgres:5432/peerdb_user
+      # CDC kaynakları burada tanımlanabilir
+    depends_on:
+      - postgres
+
+  # 2️⃣ PeerDB UI
+  peerdb-ui:
+    image: ghcr.io/peerdb-io/peerdb-ui:dev-c020dd4
+    container_name: peerdb_ui
+    restart: unless-stopped
+    depends_on:
+      - peerdb
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://peerdb:9900
+      NEXT_PUBLIC_PEERDB_API_URL: http://peerdb:9900
+      NEXT_PUBLIC_BACKEND_URL: http://peerdb:9900
+      NEXT_PUBLIC_SERVER_URL: http://peerdb:9900
+      NEXT_PUBLIC_BASE_API_URL: http://peerdb:9900
+
+  # 3️⃣ PostgreSQL (PeerDB metadata DB)
+  postgres:
+    image: postgres:15
+    container_name: peerdb_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: peerdb_user
+      POSTGRES_PASSWORD: peerdb_pass
+      POSTGRES_DB: peerdb_user
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peerdb_user"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  pgdata:

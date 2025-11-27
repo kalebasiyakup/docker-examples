@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgresql:
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: Pa123456
+      POSTGRES_USER: postgres
+      POSTGRES_DB: NeoBff
+    networks:
+      - bff-network
+
+  redis-master:
+    image: redis:latest
+    container_name: redis-master
+    hostname: redis-master
+    restart: always
+    ports:
+      - '6379:6379'
+    command: >
+      redis-server
+      --appendonly yes
+      --replica-announce-ip 127.0.0.1
+      --replica-announce-port 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      bff-network:
+        aliases:
+          - redis-master
+
+  redis-sentinel:
+    image: redis:latest
+    container_name: redis-sentinel
+    hostname: redis-sentinel
+    restart: always
+    ports:
+      - '26379:26379'
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf
+    command: redis-sentinel /etc/redis/sentinel.conf
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks:
+      - bff-network
+
+networks:
+  bff-network:
+    driver: bridge
